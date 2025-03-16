@@ -7,9 +7,11 @@ import {
   TouchableOpacity, 
   ScrollView, 
   Alert,
-  Linking 
+  Linking,
+  useColorScheme
 } from 'react-native';
 import { getSettings, updateSettings } from '../services/settingsService';
+import logger from '../utils/logger';
 
 const SettingsScreen = () => {
   const [settings, setSettings] = useState({
@@ -31,9 +33,10 @@ const SettingsScreen = () => {
       const userSettings = await getSettings();
       if (userSettings) {
         setSettings(userSettings);
+        logger.debug('Settings loaded successfully', 'SettingsScreen');
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error(`Failed to load settings: ${error}`, 'SettingsScreen');
     }
   };
   
@@ -46,14 +49,16 @@ const SettingsScreen = () => {
     
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    logger.debug(`Setting "${key}" toggled to: ${!settings[key]}`, 'SettingsScreen');
   };
   
   // Save settings
   const saveSettings = async (updatedSettings) => {
     try {
       await updateSettings(updatedSettings);
+      logger.debug('Settings saved successfully', 'SettingsScreen');
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.error(`Failed to save settings: ${error}`, 'SettingsScreen');
     }
   };
   
@@ -75,88 +80,140 @@ const SettingsScreen = () => {
     
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    logger.debug(`API selection changed to: ${useFree ? 'Free' : 'Premium'}`, 'SettingsScreen');
   };
   
   // Open privacy policy
   const openPrivacyPolicy = () => {
     Linking.openURL('https://example.com/privacy-policy');
+    logger.info('Privacy policy link opened', 'SettingsScreen');
   };
   
   // Open terms of service
   const openTermsOfService = () => {
     Linking.openURL('https://example.com/terms-of-service');
+    logger.info('Terms of service link opened', 'SettingsScreen');
   };
   
+  // Determine if the app should use dark mode styles based on settings
+  const isDarkMode = settings.darkMode;
+  
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>General</Text>
+    <ScrollView style={[
+      styles.container,
+      isDarkMode && styles.darkContainer
+    ]}>
+      <View style={[
+        styles.section,
+        isDarkMode && styles.darkSection
+      ]}>
+        <Text style={[
+          styles.sectionTitle,
+          isDarkMode && styles.darkSectionTitle
+        ]}>General</Text>
         
         <View style={styles.settingItem}>
           <View>
-            <Text style={styles.settingText}>Save Translation History</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={[
+              styles.settingText,
+              isDarkMode && styles.darkSettingText
+            ]}>Save Translation History</Text>
+            <Text style={[
+              styles.settingDescription,
+              isDarkMode && styles.darkSettingDescription
+            ]}>
               Store your previous translations
             </Text>
           </View>
           <Switch
             value={settings.saveHistory}
             onValueChange={() => handleToggleSetting('saveHistory')}
-            trackColor={{ false: '#d3d3d3', true: '#c6d8f6' }}
+            trackColor={{ false: '#d3d3d3', true: '#6889c4' }}
             thumbColor={settings.saveHistory ? '#4a6ea9' : '#f4f3f4'}
           />
         </View>
         
         <View style={styles.settingItem}>
           <View>
-            <Text style={styles.settingText}>Auto-Translate</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={[
+              styles.settingText,
+              isDarkMode && styles.darkSettingText
+            ]}>Auto-Translate</Text>
+            <Text style={[
+              styles.settingDescription,
+              isDarkMode && styles.darkSettingDescription
+            ]}>
               Translate text as you type
             </Text>
           </View>
           <Switch
             value={settings.autoTranslate}
             onValueChange={() => handleToggleSetting('autoTranslate')}
-            trackColor={{ false: '#d3d3d3', true: '#c6d8f6' }}
+            trackColor={{ false: '#d3d3d3', true: '#6889c4' }}
             thumbColor={settings.autoTranslate ? '#4a6ea9' : '#f4f3f4'}
           />
         </View>
         
-        <View style={styles.settingItem}>
+        <View style={[
+          styles.settingItem,
+          { borderBottomWidth: 0 }
+        ]}>
           <View>
-            <Text style={styles.settingText}>Dark Mode</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={[
+              styles.settingText,
+              isDarkMode && styles.darkSettingText
+            ]}>Dark Mode</Text>
+            <Text style={[
+              styles.settingDescription,
+              isDarkMode && styles.darkSettingDescription
+            ]}>
               Use dark color theme
             </Text>
           </View>
           <Switch
             value={settings.darkMode}
             onValueChange={() => handleToggleSetting('darkMode')}
-            trackColor={{ false: '#d3d3d3', true: '#c6d8f6' }}
+            trackColor={{ false: '#d3d3d3', true: '#6889c4' }}
             thumbColor={settings.darkMode ? '#4a6ea9' : '#f4f3f4'}
           />
         </View>
       </View>
       
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Translation API</Text>
+      <View style={[
+        styles.section,
+        isDarkMode && styles.darkSection
+      ]}>
+        <Text style={[
+          styles.sectionTitle,
+          isDarkMode && styles.darkSectionTitle
+        ]}>Translation API</Text>
         
         <TouchableOpacity 
           style={[
             styles.apiOption,
-            settings.useFreeApi && styles.selectedApiOption
+            settings.useFreeApi && styles.selectedApiOption,
+            isDarkMode && styles.darkApiOption,
+            settings.useFreeApi && isDarkMode && styles.darkSelectedApiOption
           ]}
           onPress={() => handleApiSelection(true)}
         >
           <View>
-            <Text style={styles.apiOptionTitle}>Free API</Text>
-            <Text style={styles.apiOptionDescription}>
+            <Text style={[
+              styles.apiOptionTitle,
+              isDarkMode && styles.darkApiOptionTitle
+            ]}>Free API</Text>
+            <Text style={[
+              styles.apiOptionDescription,
+              isDarkMode && styles.darkApiOptionDescription
+            ]}>
               Basic translation with limited languages
             </Text>
           </View>
           <View style={[
             styles.radioButton,
-            settings.useFreeApi && styles.radioButtonSelected
+            settings.useFreeApi && styles.radioButtonSelected,
+            isDarkMode && styles.darkRadioButton,
+            settings.useFreeApi && isDarkMode && styles.darkRadioButtonSelected
           ]}>
             {settings.useFreeApi && <View style={styles.radioButtonInner} />}
           </View>
@@ -165,45 +222,75 @@ const SettingsScreen = () => {
         <TouchableOpacity 
           style={[
             styles.apiOption,
-            !settings.useFreeApi && styles.selectedApiOption
+            !settings.useFreeApi && styles.selectedApiOption,
+            isDarkMode && styles.darkApiOption,
+            !settings.useFreeApi && isDarkMode && styles.darkSelectedApiOption
           ]}
           onPress={() => handleApiSelection(false)}
         >
           <View>
-            <Text style={styles.apiOptionTitle}>Premium API</Text>
-            <Text style={styles.apiOptionDescription}>
+            <Text style={[
+              styles.apiOptionTitle,
+              isDarkMode && styles.darkApiOptionTitle
+            ]}>Premium API</Text>
+            <Text style={[
+              styles.apiOptionDescription,
+              isDarkMode && styles.darkApiOptionDescription
+            ]}>
               Advanced translation with more languages and features
             </Text>
           </View>
           <View style={[
             styles.radioButton,
-            !settings.useFreeApi && styles.radioButtonSelected
+            !settings.useFreeApi && styles.radioButtonSelected,
+            isDarkMode && styles.darkRadioButton,
+            !settings.useFreeApi && isDarkMode && styles.darkRadioButtonSelected
           ]}>
             {!settings.useFreeApi && <View style={styles.radioButtonInner} />}
           </View>
         </TouchableOpacity>
       </View>
       
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+      <View style={[
+        styles.section,
+        isDarkMode && styles.darkSection
+      ]}>
+        <Text style={[
+          styles.sectionTitle,
+          isDarkMode && styles.darkSectionTitle
+        ]}>About</Text>
         
         <TouchableOpacity 
           style={styles.aboutItem}
           onPress={openPrivacyPolicy}
         >
-          <Text style={styles.aboutItemText}>Privacy Policy</Text>
+          <Text style={[
+            styles.aboutItemText,
+            isDarkMode && styles.darkAboutItemText
+          ]}>Privacy Policy</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.aboutItem}
           onPress={openTermsOfService}
         >
-          <Text style={styles.aboutItemText}>Terms of Service</Text>
+          <Text style={[
+            styles.aboutItemText,
+            isDarkMode && styles.darkAboutItemText
+          ]}>Terms of Service</Text>
         </TouchableOpacity>
-        
-        <View style={styles.aboutItem}>
-          <Text style={styles.aboutItemText}>Version 1.0.0</Text>
-        </View>
+      </View>
+      
+      {/* Version info - fixed styling to match design */}
+      <View style={styles.versionContainer}>
+        <Text style={[
+          styles.versionText,
+          isDarkMode && styles.darkVersionText
+        ]}>Universal Translator v1.0.0</Text>
+        <Text style={[
+          styles.buildText,
+          isDarkMode && styles.darkBuildText
+        ]}>Build 2023061501</Text>
       </View>
     </ScrollView>
   );
@@ -213,6 +300,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  darkContainer: {
+    backgroundColor: '#121212',
   },
   section: {
     backgroundColor: 'white',
@@ -226,11 +316,19 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  darkSection: {
+    backgroundColor: '#1e1e1e',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 15,
+  },
+  darkSectionTitle: {
+    color: '#f5f5f5',
   },
   settingItem: {
     flexDirection: 'row',
@@ -243,63 +341,108 @@ const styles = StyleSheet.create({
   settingText: {
     fontSize: 16,
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 5,
+  },
+  darkSettingText: {
+    color: '#f5f5f5',
   },
   settingDescription: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 14,
+    color: '#777',
+  },
+  darkSettingDescription: {
+    color: '#aaa',
   },
   apiOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 6,
-    marginBottom: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  darkApiOption: {
+    borderBottomColor: '#333',
   },
   selectedApiOption: {
-    borderColor: '#4a6ea9',
-    backgroundColor: '#f5f8ff',
+    backgroundColor: '#f5f7fa',
+  },
+  darkSelectedApiOption: {
+    backgroundColor: '#252525',
   },
   apiOptionTitle: {
     fontSize: 16,
-    fontWeight: '500',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 5,
+  },
+  darkApiOptionTitle: {
+    color: '#f5f5f5',
   },
   apiOptionDescription: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 14,
+    color: '#777',
+  },
+  darkApiOptionDescription: {
+    color: '#aaa',
   },
   radioButton: {
-    height: 20,
     width: 20,
+    height: 20,
     borderRadius: 10,
     borderWidth: 2,
     borderColor: '#ddd',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  darkRadioButton: {
+    borderColor: '#444',
   },
   radioButtonSelected: {
     borderColor: '#4a6ea9',
   },
+  darkRadioButtonSelected: {
+    borderColor: '#6889c4',
+  },
   radioButtonInner: {
-    height: 10,
     width: 10,
+    height: 10,
     borderRadius: 5,
     backgroundColor: '#4a6ea9',
   },
   aboutItem: {
-    paddingVertical: 12,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   aboutItemText: {
     fontSize: 16,
+    color: '#4a6ea9',
+  },
+  darkAboutItemText: {
+    color: '#6889c4',
+  },
+  versionContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  versionText: {
+    fontSize: 16,
+    fontWeight: '500',
     color: '#333',
+    marginBottom: 5,
+  },
+  darkVersionText: {
+    color: '#ddd',
+  },
+  buildText: {
+    fontSize: 14,
+    color: '#777',
+  },
+  darkBuildText: {
+    color: '#999',
   },
 });
 

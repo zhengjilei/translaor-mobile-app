@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 const TranslationResult = ({ 
   translatedText, 
   sourceLanguage, 
-  targetLanguage
+  targetLanguage,
+  isOfflineMessage
 }) => {
   // Share the translation
   const handleShare = async () => {
@@ -33,26 +34,40 @@ const TranslationResult = ({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Translation:</Text>
-      <View style={styles.translationBox}>
-        <Text style={styles.translatedText}>{translatedText}</Text>
+      <View style={[
+        styles.translationBox,
+        isOfflineMessage && styles.offlineMessageBox
+      ]}>
+        {isOfflineMessage ? (
+          <>
+            <Ionicons name="alert-circle-outline" size={24} color="#ff8c00" style={styles.warningIcon} />
+            <Text style={styles.offlineMessage}>{translatedText}</Text>
+          </>
+        ) : (
+          <Text style={styles.translatedText}>{translatedText}</Text>
+        )}
       </View>
       
       <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={handleCopy}
-        >
-          <Ionicons name="copy-outline" size={20} color="#4a6ea9" />
-          <Text style={styles.actionButtonText}>Copy</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={handleShare}
-        >
-          <Ionicons name="share-outline" size={20} color="#4a6ea9" />
-          <Text style={styles.actionButtonText}>Share</Text>
-        </TouchableOpacity>
+        {!isOfflineMessage && (
+          <>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={handleCopy}
+            >
+              <Ionicons name="copy-outline" size={20} color="#4a6ea9" />
+              <Text style={styles.actionButtonText}>Copy</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={handleShare}
+            >
+              <Ionicons name="share-outline" size={20} color="#4a6ea9" />
+              <Text style={styles.actionButtonText}>Share</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>
   );
@@ -76,9 +91,24 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 100,
   },
+  offlineMessageBox: {
+    backgroundColor: '#fff8e8',
+    borderColor: '#ffcc80',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   translatedText: {
     fontSize: 16,
     lineHeight: 24,
+  },
+  offlineMessage: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#e67e00',
+    flex: 1,
+  },
+  warningIcon: {
+    marginRight: 8,
   },
   actionButtons: {
     flexDirection: 'row',

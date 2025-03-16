@@ -189,3 +189,44 @@ export const searchPhrasebook = async (query) => {
     return [];
   }
 };
+
+// Get all categories
+export const getCategories = async () => {
+  try {
+    // For now, just return the default categories
+    // In a full implementation, you might merge these with user-created categories
+    return getDefaultCategories();
+  } catch (error) {
+    console.error('Failed to get categories:', error);
+    return [];
+  }
+};
+
+// Get current language pair
+export const getCurrentLanguagePair = async () => {
+  try {
+    // Try to get stored language pair from AsyncStorage
+    const savedPair = await AsyncStorage.getItem('translator_language_pair');
+    if (savedPair) {
+      return JSON.parse(savedPair);
+    }
+    // Return default pair if none is stored
+    return { sourceLang: 'en', targetLang: 'es' };
+  } catch (error) {
+    console.error('Failed to get current language pair:', error);
+    // Return default pair on error
+    return { sourceLang: 'en', targetLang: 'es' };
+  }
+};
+
+// Switch language pair
+export const switchLanguagePair = async (sourceLang, targetLang) => {
+  try {
+    const pair = { sourceLang, targetLang };
+    await AsyncStorage.setItem('translator_language_pair', JSON.stringify(pair));
+    return true;
+  } catch (error) {
+    console.error('Failed to switch language pair:', error);
+    return false;
+  }
+};

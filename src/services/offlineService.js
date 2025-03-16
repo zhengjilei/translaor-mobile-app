@@ -167,37 +167,57 @@ export const translateTextOffline = async (text, sourceLanguage, targetLanguage)
     const isTargetDownloaded = await isLanguageDownloaded(targetLanguage);
     
     if (!isSourceDownloaded || !isTargetDownloaded) {
-      throw new Error('Required language packs not downloaded for offline translation');
+      return {
+        translatedText: "Translation unavailable. Language packs not completely downloaded.",
+        sourceLanguage,
+        targetLanguage,
+        isOfflineMessage: true
+      };
     }
     
     // Load language data
     const sourceLangPath = `${FileSystem.documentDirectory}languages/${sourceLanguage}.json`;
     const targetLangPath = `${FileSystem.documentDirectory}languages/${targetLanguage}.json`;
     
-    const sourceData = JSON.parse(await FileSystem.readAsStringAsync(sourceLangPath));
-    const targetData = JSON.parse(await FileSystem.readAsStringAsync(targetLangPath));
-    
-    // For demo purposes, we'll do a very simple phrase-based translation
-    // In a real app, this would use ML models stored on the device
-    
-    // Check if we have an exact phrase match
-    const textLower = text.toLowerCase().trim();
-    
-    for (const phrase of sourceData.phrases) {
-      if (phrase.text.toLowerCase() === textLower) {
-        // Find matching phrase in target language
-        const targetPhrase = targetData.phrases.find(p => p.id === phrase.id);
-        if (targetPhrase) {
-          return targetPhrase.text;
+    try {
+      const sourceData = JSON.parse(await FileSystem.readAsStringAsync(sourceLangPath));
+      const targetData = JSON.parse(await FileSystem.readAsStringAsync(targetLangPath));
+      
+      // For demo purposes, we'll do a very simple phrase-based translation
+      // In a real app, this would use ML models stored on the device
+      
+      // Check if we have an exact phrase match
+      const textLower = text.toLowerCase().trim();
+      
+      for (const phrase of sourceData.phrases) {
+        if (phrase.text.toLowerCase() === textLower) {
+          // Find matching phrase in target language
+          const targetPhrase = targetData.phrases.find(p => p.id === phrase.id);
+          if (targetPhrase) {
+            return targetPhrase.text;
+          }
         }
       }
+      
+      // If no exact match, return a fake "offline translation"
+      return `[Offline ${targetLanguage.toUpperCase()} Translation] ${text}`;
+    } catch (fileError) {
+      console.error('Error reading language files:', fileError);
+      return {
+        translatedText: "Error accessing offline translation data. Try reinstalling language packs.",
+        sourceLanguage,
+        targetLanguage,
+        isOfflineMessage: true
+      };
     }
-    
-    // If no exact match, return a fake "offline translation"
-    return `[Offline ${targetLanguage.toUpperCase()} Translation] ${text}`;
   } catch (error) {
     console.error('Offline translation failed:', error);
-    throw error;
+    return {
+      translatedText: "Offline translation failed. Please try again.",
+      sourceLanguage,
+      targetLanguage,
+      isOfflineMessage: true
+    };
   }
 };
 

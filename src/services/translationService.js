@@ -5,6 +5,7 @@ import {
   translateTextOffline
 } from './offlineService';
 import NetInfo from '@react-native-community/netinfo';
+import logger from '../utils/logger';
 
 // Context-aware phrases for better translation
 const contextualPhrases = {
@@ -78,114 +79,74 @@ const contextualPhrases = {
 // In a real app, this would integrate with an actual translation API
 export const translateText = async (text, sourceLang, targetLang, context = null) => {
   try {
-    // Check network connection
+    logger.debug(`Translating: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}" from ${sourceLang} to ${targetLang}${context ? ` (context: ${context})` : ''}`, 'TranslationService');
+    
+    // Check network connection first
     const netInfo = await NetInfo.fetch();
     const isConnected = netInfo.isConnected && netInfo.isInternetReachable;
     
-    // Check if offline mode is enabled
+    // Get user settings
+    const settings = await getSettings();
+    
+    // Check if offline mode is enabled and preferred
     const offlineMode = await isOfflineModeEnabled();
     
-    // Try offline translation if offline mode is enabled or no internet connection
+    // If offline mode is enabled or no network connection
     if (offlineMode || !isConnected) {
+      logger.info(`Using offline translation mode (network connected: ${isConnected})`, 'TranslationService');
+      
+      // Check if both languages are downloaded
       const sourceDownloaded = await isLanguageDownloaded(sourceLang);
       const targetDownloaded = await isLanguageDownloaded(targetLang);
       
       if (sourceDownloaded && targetDownloaded) {
-        return await translateTextOffline(text, sourceLang, targetLang);
-      } else if (!isConnected) {
-        throw new Error('No internet connection and required language packs not downloaded');
-      }
-      // If we're here, we have internet but prefer offline mode - language packs are not available
-      // Fall through to online translation
-    }
-    
-    // Delay to simulate network request
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Get user settings to determine which API to use
-    const settings = await getSettings();
-    
-    // Check for context-specific translations first
-    if (context && contextualPhrases[context]) {
-      const contextKey = `${sourceLang}-${targetLang}`;
-      if (contextualPhrases[context][contextKey] && 
-          contextualPhrases[context][contextKey][text]) {
-        return contextualPhrases[context][contextKey][text];
+        logger.debug('Both language packs are downloaded, using offline translation', 'TranslationService');
+        // We have offline packs, use them
+        return translateTextOffline(text, sourceLang, targetLang, context);
+      } else {
+        // Return an appropriate offline message
+        const missingLangs = [];
+        if (!sourceDownloaded) missingLangs.push(getLanguageName(sourceLang));
+        if (!targetDownloaded) missingLangs.push(getLanguageName(targetLang));
+        
+        logger.warn(`Cannot translate offline - missing language pack(s): ${missingLangs.join(', ')}`, 'TranslationService');
+        
+        return {
+          translatedText: `Unable to translate - missing offline language pack${missingLangs.length > 1 ? 's' : ''} for ${missingLangs.join(' and ')}. Please download the required language packs or connect to the internet.`,
+          isOfflineMessage: true
+        };
       }
     }
     
-    // Simple mock translation to demonstrate functionality
-    // This would be replaced with a real API call in a production app
-    const translations = {
-      'en-es': {
-        'Hello': 'Hola',
-        'How are you?': '¿Cómo estás?',
-        'Thank you': 'Gracias',
-        'What is your name?': '¿Cómo te llamas?',
-        'Good morning': 'Buenos días',
-        'Good afternoon': 'Buenas tardes',
-        'Good evening': 'Buenas noches',
-        'Goodbye': 'Adiós',
-        'Please': 'Por favor',
-        'Sorry': 'Lo siento',
-        'Yes': 'Sí',
-        'No': 'No',
-      },
-      'es-en': {
-        'Hola': 'Hello',
-        '¿Cómo estás?': 'How are you?',
-        'Gracias': 'Thank you',
-        '¿Cómo te llamas?': 'What is your name?',
-        'Buenos días': 'Good morning',
-        'Buenas tardes': 'Good afternoon',
-        'Buenas noches': 'Good evening',
-        'Adiós': 'Goodbye',
-        'Por favor': 'Please',
-        'Lo siento': 'Sorry',
-        'Sí': 'Yes',
-        'No': 'No',
-      },
-      'en-fr': {
-        'Hello': 'Bonjour',
-        'How are you?': 'Comment allez-vous ?',
-        'Thank you': 'Merci',
-        'What is your name?': 'Comment vous appelez-vous ?',
-        'Good morning': 'Bonjour',
-        'Good afternoon': 'Bon après-midi',
-        'Good evening': 'Bonsoir',
-        'Goodbye': 'Au revoir',
-        'Please': 'S\'il vous plaît',
-        'Sorry': 'Désolé',
-        'Yes': 'Oui',
-        'No': 'Non',
-      },
-      'fr-en': {
-        'Bonjour': 'Hello',
-        'Comment allez-vous ?': 'How are you?',
-        'Merci': 'Thank you',
-        'Comment vous appelez-vous ?': 'What is your name?',
-        'Bon après-midi': 'Good afternoon',
-        'Bonsoir': 'Good evening',
-        'Au revoir': 'Goodbye',
-        'S\'il vous plaît': 'Please',
-        'Désolé': 'Sorry',
-        'Oui': 'Yes',
-        'Non': 'No',
-      },
-    };
+    // Online translation - this would call a real API in production
+    logger.info(`Using online translation service for ${sourceLang} to ${targetLang}`, 'TranslationService');
     
+    // Add a small delay to simulate network request
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Check for preset/canned translations
     const translationKey = `${sourceLang}-${targetLang}`;
     
+    // Get translations for this language pair if they exist
+    let translations = {};
+    if (context && contextualPhrases[context]) {
+      translations = contextualPhrases[context][translationKey] || {};
+      logger.debug(`Found contextual translations for ${context}`, 'TranslationService');
+    }
+    
     // If we have a preset translation, use that
-    if (translations[translationKey] && translations[translationKey][text]) {
-      return translations[translationKey][text];
+    if (translations[text]) {
+      logger.debug('Using preset translation from context phrases', 'TranslationService');
+      return translations[text];
     }
     
     // Otherwise generate a simple mock translation
     if (settings.useFreeApi) {
+      logger.debug('Using free translation API (mock)', 'TranslationService');
       return `[${targetLang.toUpperCase()} Translation] ${text}`;
     } else {
       // Premium API would provide more accurate translations with context awareness
+      logger.debug('Using premium translation API (mock)', 'TranslationService');
       if (context) {
         return `[Premium ${targetLang.toUpperCase()} Translation for ${context}] ${text}`;
       } else {
@@ -193,8 +154,13 @@ export const translateText = async (text, sourceLang, targetLang, context = null
       }
     }
   } catch (error) {
-    console.error('Translation error:', error);
-    throw error;
+    logger.error(`Translation error: ${error.message}`, 'TranslationService', error);
+    
+    // Return a more user-friendly error as an offline message
+    return {
+      translatedText: `Translation failed: ${error.message || 'Unknown error'}. Please try again later.`,
+      isOfflineMessage: true
+    };
   }
 };
 
@@ -348,4 +314,14 @@ export const getContextPhrases = (contextId, sourceLang = 'en') => {
   };
   
   return contextMap[contextId] || [];
+};
+
+// Define getLanguageName function
+const getLanguageName = (code) => {
+  const languageMap = {
+    en: 'English',
+    es: 'Spanish',
+    // Add other language codes and names as needed
+  };
+  return languageMap[code] || 'Unknown';
 };

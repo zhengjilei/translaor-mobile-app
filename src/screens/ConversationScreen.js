@@ -22,7 +22,7 @@ import { getSupportedLanguages } from '../services/translationService';
 import { isOfflineModeEnabled, isLanguageDownloaded } from '../services/offlineService';
 
 const ConversationScreen = ({ navigation, route }) => {
-  const { conversationId } = route.params;
+  const { conversationId } = route.params || {};
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
@@ -36,8 +36,20 @@ const ConversationScreen = ({ navigation, route }) => {
   
   // Load conversation and languages when component mounts
   useEffect(() => {
-    loadConversation();
     loadLanguages();
+    
+    // Check if conversationId is provided
+    if (conversationId) {
+      loadConversation();
+    } else {
+      // If no conversationId, show error and go back
+      Alert.alert('Error', 'No conversation selected', [
+        { 
+          text: 'OK', 
+          onPress: () => navigation.goBack() 
+        }
+      ]);
+    }
     
     // Check if offline mode is enabled
     const checkOfflineStatus = async () => {
@@ -46,7 +58,7 @@ const ConversationScreen = ({ navigation, route }) => {
     };
     
     checkOfflineStatus();
-  }, [conversationId]);
+  }, [conversationId, navigation]);
   
   // Load languages
   const loadLanguages = async () => {
@@ -61,6 +73,10 @@ const ConversationScreen = ({ navigation, route }) => {
   // Load conversation data
   const loadConversation = async () => {
     try {
+      if (!conversationId) {
+        return; // Skip if no conversationId (already handled in useEffect)
+      }
+      
       const conversationData = await getConversation(conversationId);
       
       if (!conversationData) {

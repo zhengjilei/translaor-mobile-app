@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import { updateLanguagePreferences } from '../services/settingsService';
 
 const LanguageSelector = ({ 
   sourceLanguage,
@@ -14,6 +15,36 @@ const LanguageSelector = ({
   const [sourceOpen, setSourceOpen] = useState(false);
   const [targetOpen, setTargetOpen] = useState(false);
   
+  // Wrapper for source language change to also update global preferences
+  const handleSourceLanguageChange = (value) => {
+    onSourceLanguageChange(value);
+    
+    // Find the language name from the languages array
+    const selectedLang = languages.find(lang => lang.value === value);
+    const sourceLangName = selectedLang ? selectedLang.label : 'Unknown';
+    
+    // Update global preferences
+    updateLanguagePreferences({
+      sourceLanguage: value,
+      sourceLanguageName: sourceLangName
+    });
+  };
+  
+  // Wrapper for target language change to also update global preferences
+  const handleTargetLanguageChange = (value) => {
+    onTargetLanguageChange(value);
+    
+    // Find the language name from the languages array
+    const selectedLang = languages.find(lang => lang.value === value);
+    const targetLangName = selectedLang ? selectedLang.label : 'Unknown';
+    
+    // Update global preferences
+    updateLanguagePreferences({
+      targetLanguage: value,
+      targetLanguageName: targetLangName
+    });
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.languagePickerContainer}>
@@ -23,7 +54,7 @@ const LanguageSelector = ({
           value={sourceLanguage}
           items={languages}
           setOpen={setSourceOpen}
-          setValue={onSourceLanguageChange}
+          setValue={handleSourceLanguageChange}
           style={styles.picker}
           dropDownContainerStyle={styles.dropDownContainer}
           zIndex={3000}
@@ -45,7 +76,7 @@ const LanguageSelector = ({
           value={targetLanguage}
           items={languages}
           setOpen={setTargetOpen}
-          setValue={onTargetLanguageChange}
+          setValue={handleTargetLanguageChange}
           style={styles.picker}
           dropDownContainerStyle={styles.dropDownContainer}
           zIndex={2000}

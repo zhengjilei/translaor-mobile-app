@@ -1,23 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AppState, StatusBar } from 'react-native';
+import { AppState, StatusBar, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getSettings } from './src/services/settingsService';
 import { isOfflineModeEnabled } from './src/services/offlineService';
+import logger, { configureLogger, LOG_LEVELS } from './src/utils/logger';
 
-// Import screens
+// Import home screen for immediate loading
 import HomeScreen from './src/screens/HomeScreen';
-import TranslateScreen from './src/screens/TranslateScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
-import PhrasebookScreen from './src/screens/PhrasebookScreen';
-import ConversationScreen from './src/screens/ConversationScreen';
-import ConversationListScreen from './src/screens/ConversationListScreen';
-import CameraTranslateScreen from './src/screens/CameraTranslateScreen';
-import LanguagePacksScreen from './src/screens/LanguagePacksScreen';
+import SplashScreen from './src/screens/SplashScreen';
+
+// Initialize logger at app startup
+configureLogger({
+  logLevel: __DEV__ ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR,
+  enableTimestamp: true,
+  enableComponentName: true,
+});
+
+// Lazy load other screens
+const TranslateScreen = lazy(() => import('./src/screens/TranslateScreen'));
+const HistoryScreen = lazy(() => import('./src/screens/HistoryScreen'));
+const SettingsScreen = lazy(() => import('./src/screens/SettingsScreen'));
+const PhrasebookScreen = lazy(() => import('./src/screens/PhrasebookScreen'));
+const ConversationScreen = lazy(() => import('./src/screens/ConversationScreen'));
+const ConversationListScreen = lazy(() => import('./src/screens/ConversationListScreen'));
+const CameraTranslateScreen = lazy(() => import('./src/screens/CameraTranslateScreen'));
+const LanguagePacksScreen = lazy(() => import('./src/screens/LanguagePacksScreen'));
 
 // Create the stack navigator
 const Stack = createNativeStackNavigator();
+
+// Loading component for lazy-loaded screens
+const LoadingScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <ActivityIndicator size="large" color="#4a6ea9" />
+  </View>
+);
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -25,7 +44,11 @@ export default function App() {
   
   // Handle app state changes (foreground/background)
   useEffect(() => {
+    logger.info('App initialized', 'App');
+    
     const appStateSubscription = AppState.addEventListener('change', nextAppState => {
+      logger.debug(`App state changed to: ${nextAppState}`, 'App');
+      
       if (nextAppState === 'active') {
         // App came to foreground, check settings
         loadSettings();
@@ -37,6 +60,7 @@ export default function App() {
     
     return () => {
       appStateSubscription.remove();
+      logger.debug('App cleanup', 'App');
     };
   }, []);
   
@@ -46,12 +70,20 @@ export default function App() {
       // Get user settings
       const settings = await getSettings();
       setDarkMode(settings.darkMode);
+      logger.debug(`Theme set to ${settings.darkMode ? 'dark' : 'light'} mode`, 'App');
       
       // Check offline mode
       const offline = await isOfflineModeEnabled();
       setIsOffline(offline);
+      logger.info(`Offline mode is ${offline ? 'enabled' : 'disabled'}`, 'App');
+      
+      // Update logger configuration based on settings
+      // In a real app, you might want to adjust log levels based on user preference
+      configureLogger({
+        logLevel: __DEV__ ? LOG_LEVELS.DEBUG : (settings.verboseLogging ? LOG_LEVELS.INFO : LOG_LEVELS.ERROR),
+      });
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error(`Failed to load settings: ${error.message}`, 'App', error);
     }
   };
   
@@ -69,80 +101,143 @@ export default function App() {
   };
   
   return (
-    <NavigationContainer theme={theme}>
-      <StatusBar
-        barStyle={darkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.card}
-      />
-      <Stack.Navigator 
-        initialRouteName="Home"
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: theme.colors.card,
-          },
-          headerTintColor: theme.colors.text,
-          headerTitleStyle: {
-            fontWeight: '600',
-          },
-          animation: 'slide_from_right',
+    <GestureHandlerRootView style={styles.container}>
+      <NavigationContainer 
+        theme={theme}
+        onStateChange={(state) => {
+          const currentRouteName = state?.routes[state.index]?.name;
+          if (currentRouteName) {
+            logger.debug(`Navigation: Current screen is ${currentRouteName}`, 'Navigation');
+          }
         }}
       >
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen}
-          options={{ 
-            title: 'Universal Translator',
-            headerShown: false, // Hide header on home screen
+        <StatusBar
+          barStyle={darkMode ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.colors.card}
+        />
+        <Stack.Navigator 
+          initialRouteName="Splash"
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: theme.colors.card,
+            },
+            headerTintColor: theme.colors.text,
+            headerTitleStyle: {
+              fontWeight: '600',
+            },
+            animation: 'slide_from_right',
           }}
-        />
-        <Stack.Screen 
-          name="Translate" 
-          component={TranslateScreen}
-          options={{ title: 'Text Translation' }}
-        />
-        <Stack.Screen 
-          name="History" 
-          component={HistoryScreen}
-          options={{ title: 'Translation History' }}
-        />
-        <Stack.Screen 
-          name="Settings" 
-          component={SettingsScreen}
-          options={{ title: 'Settings' }}
-        />
-        <Stack.Screen 
-          name="Phrasebook" 
-          component={PhrasebookScreen}
-          options={{ title: 'Phrasebook' }}
-        />
-        <Stack.Screen 
-          name="ConversationList" 
-          component={ConversationListScreen}
-          options={{ title: 'Conversations' }}
-        />
-        <Stack.Screen 
-          name="Conversation" 
-          component={ConversationScreen}
-          options={({ route }) => ({ 
-            title: route.params?.title || 'Conversation',
-            headerBackTitle: 'Back',
-          })}
-        />
-        <Stack.Screen 
-          name="CameraTranslate" 
-          component={CameraTranslateScreen}
-          options={{ 
-            title: 'Camera Translation',
-            headerTransparent: true,
-            headerTintColor: 'white',
-          }}
-        />
-        <Stack.Screen 
-          name="LanguagePacks" 
-          component={LanguagePacksScreen}
-          options={{ title: 'Offline Language Packs' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+        >
+          <Stack.Screen 
+            name="Splash" 
+            component={SplashScreen}
+            options={{ 
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen 
+            name="Home" 
+            component={HomeScreen}
+            options={{ 
+              title: 'Universal Translator',
+              headerShown: false, // Hide header on home screen
+            }}
+          />
+          <Stack.Screen 
+            name="Translate" 
+            options={{ title: 'Text Translation' }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <TranslateScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="History" 
+            options={{ title: 'Translation History' }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <HistoryScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="Settings" 
+            options={{ title: 'Settings' }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <SettingsScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="Phrasebook" 
+            options={{ title: 'Phrasebook' }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <PhrasebookScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="ConversationList" 
+            options={{ title: 'Conversations' }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <ConversationListScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="Conversation" 
+            options={({ route }) => ({ 
+              title: route.params?.title || 'Conversation',
+              headerBackTitle: 'Back',
+            })}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <ConversationScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="CameraTranslate" 
+            options={{ 
+              title: 'Camera Translation',
+              headerTransparent: true,
+              headerTintColor: 'white',
+            }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <CameraTranslateScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+          <Stack.Screen 
+            name="LanguagePacks" 
+            options={{ title: 'Offline Language Packs' }}
+          >
+            {props => (
+              <Suspense fallback={<LoadingScreen />}>
+                <LanguagePacksScreen {...props} />
+              </Suspense>
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
