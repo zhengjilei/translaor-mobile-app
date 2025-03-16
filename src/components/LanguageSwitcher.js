@@ -77,9 +77,17 @@ const LanguageSwitcher = ({ onLanguageChange, darkMode = false, style }) => {
   // Get formatted language name with any special annotations
   const getFormattedLanguageName = (code) => {
     const baseName = getLanguageName(code);
-    if (code === 'zh') {
-      return `${baseName} (Simplified)`;
+    
+    // Check if the name contains parentheses
+    if (baseName.includes('(')) {
+      // Split at the opening parenthesis and format with a line break
+      const [mainPart, parentheticalPart] = baseName.split(/\s*\(/);
+      // Remove the closing parenthesis for processing
+      const cleanParenthetical = parentheticalPart.replace(')', '');
+      // Return formatted with line break and restored parentheses
+      return `${mainPart}\n(${cleanParenthetical})`;
     }
+    
     return baseName;
   };
   
@@ -359,12 +367,12 @@ const styles = StyleSheet.create({
   languageButton: {
     backgroundColor: '#f5f5f5',
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     width: '42%',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    height: 50,
     ...Platform.select({
       android: {
         elevation: 2,
@@ -381,10 +389,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1c1c',
   },
   languageText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#333',
     textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 2,
   },
   darkLanguageText: {
     color: 'white',
